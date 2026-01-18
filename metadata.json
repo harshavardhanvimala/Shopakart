@@ -1,0 +1,8 @@
+{
+  "name": "Shopakart ",
+  "description": "A comprehensive local marketplace application featuring shop management, GPS location services, QR code sharing, and rich product catalogs.",
+  "requestFramePermissions": [
+    "camera",
+    "geolocation"
+  ]
+}
