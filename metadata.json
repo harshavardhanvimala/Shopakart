@@ -1,8 +1,15 @@
+
 {
-  "name": "Shopakart ",
-  "description": "A comprehensive local marketplace application featuring shop management, GPS location services, QR code sharing, and rich product catalogs.",
+  "name": "Shopakart",
+  "short_name": "Shopakart",
+  "description": "Premium Local Marketplace Connector",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#10b981",
   "requestFramePermissions": [
     "camera",
+    "microphone",
     "geolocation"
   ]
 }

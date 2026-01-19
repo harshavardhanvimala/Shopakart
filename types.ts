@@ -45,6 +45,13 @@ export interface VisitListItem {
   quantity: number;
 }
 
+// Added AppData interface to fix database service typing errors
+export interface AppData {
+  shops: Shop[];
+  products: Product[];
+  visitList: VisitListItem[];
+}
+
 export type AppView = 
   | 'ONBOARDING' 
   | 'HOME' 
