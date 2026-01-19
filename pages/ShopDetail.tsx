@@ -1,9 +1,9 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   ArrowLeft, Heart, Share2, MapPin, Phone, 
   MessageCircle, Star, Clock, ChevronRight, 
-  QrCode, Plus, MoreHorizontal, ShoppingCart, Check
+  QrCode, Plus, MoreHorizontal, ShoppingList, Check, Map, Play
 } from 'lucide-react';
 import { Shop } from '../types';
 import QRCodeModal from '../components/QRCodeModal';
@@ -12,203 +12,243 @@ interface ShopDetailProps {
   shop: Shop;
   onBack: () => void;
   onStartChat: (shop: Shop) => void;
+  onPlanVisit: (productId: string, shopId: string, quantity: number) => void;
 }
 
-const ShopDetail: React.FC<ShopDetailProps> = ({ shop, onBack, onStartChat }) => {
+const ShopDetail: React.FC<ShopDetailProps> = ({ shop, onBack, onStartChat, onPlanVisit }) => {
   const [isFavorite, setIsFavorite] = useState(false);
   const [showQR, setShowQR] = useState(false);
-  const [isCartBouncing, setIsCartBouncing] = useState(false);
+  const [isVisitListBouncing, setIsVisitListBouncing] = useState(false);
   
-  // Local state for stock management to demonstrate visual updates
-  const [productStocks, setProductStocks] = useState<{ [id: string]: number }>(
-    shop.products.reduce((acc, p) => ({ ...acc, [p.id]: p.stock }), {})
-  );
-  const [cartItems, setCartItems] = useState<{ [id: string]: number }>({});
-  const [lastAdded, setLastAdded] = useState<string | null>(null);
+  const [animatingStockId, setAnimatingStockId] = useState<string | null>(null);
+  const prevStocksRef = useRef<{ [id: string]: number }>({});
 
-  const handleQuickAdd = (productId: string) => {
-    if (productStocks[productId] > 0) {
-      setProductStocks(prev => ({
-        ...prev,
-        [productId]: prev[productId] - 1
-      }));
-      setCartItems(prev => ({
-        ...prev,
-        [productId]: (prev[productId] || 0) + 1
-      }));
-      
-      // Visual feedback for the button
-      setLastAdded(productId);
-      
-      // Visual feedback for the header cart
-      setIsCartBouncing(true);
-      
+  useEffect(() => {
+    shop.products.forEach(p => {
+      const prev = prevStocksRef.current[p.id];
+      if (prev !== undefined && prev !== p.stock) {
+        setAnimatingStockId(p.id);
+        const timer = setTimeout(() => setAnimatingStockId(null), 800);
+        return () => clearTimeout(timer);
+      }
+      prevStocksRef.current[p.id] = p.stock;
+    });
+  }, [shop.products]);
+
+  const [inputQuantities, setInputQuantities] = useState<{ [id: string]: number }>(
+    shop.products.reduce((acc, p) => ({ ...acc, [p.id]: 1 }), {})
+  );
+
+  const [lastAdded, setLastAdded] = useState<{ id: string; qty: number } | null>(null);
+
+  const handleCall = () => {
+    window.location.href = `tel:${shop.phone.replace(/\s/g, '')}`;
+  };
+
+  const handleNavigate = () => {
+    const query = encodeURIComponent(shop.address);
+    window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
+  };
+
+  const handleQuantityChange = (productId: string, val: string) => {
+    const qty = parseInt(val) || 0;
+    const product = shop.products.find(p => p.id === productId);
+    const stock = product?.stock || 0;
+    const clampedQty = Math.max(0, Math.min(qty, stock));
+    setInputQuantities(prev => ({ ...prev, [productId]: clampedQty }));
+  };
+
+  const handleAddToVisitList = (productId: string) => {
+    const requestedQty = (inputQuantities[productId] as number) || 0;
+    const product = shop.products.find(p => p.id === productId);
+    const availableStock = product?.stock || 0;
+    
+    if (requestedQty > 0 && availableStock >= requestedQty) {
+      onPlanVisit(productId, shop.id, requestedQty);
+      setLastAdded({ id: productId, qty: requestedQty });
+      setIsVisitListBouncing(true);
+      setInputQuantities(prev => ({ ...prev, [productId]: 1 }));
       setTimeout(() => {
         setLastAdded(null);
-        setIsCartBouncing(false);
-      }, 800);
+        setIsVisitListBouncing(false);
+      }, 1000);
+    } else if (requestedQty > availableStock) {
+      alert(`The shop only has ${availableStock} in stock right now.`);
     }
   };
 
-  const totalInCart = Object.values(cartItems).reduce((a, b) => a + b, 0);
-
   return (
     <div className="min-h-screen bg-white pb-24 animate-in slide-in-from-right duration-300">
-      {/* Header Sticky Action Bar */}
-      <div className="relative h-64 w-full">
-        <img src={shop.imageUrl} className="w-full h-full object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+      <div className="relative h-72 w-full overflow-hidden">
+        {shop.imageUrl ? (
+          <img src={shop.imageUrl} className="w-full h-full object-cover scale-105" alt={shop.name} />
+        ) : (
+          <div className="w-full h-full bg-emerald-600 flex items-center justify-center relative">
+            <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white via-transparent to-transparent" />
+            <span className="text-[12rem] font-black text-white/10 italic leading-none select-none transform -rotate-12 translate-x-8 translate-y-4">
+              {shop.name.charAt(0)}
+            </span>
+            <div className="z-10 bg-white/10 backdrop-blur-md p-6 rounded-[2.5rem] border border-white/20 shadow-2xl">
+              <span className="text-6xl font-black text-white italic drop-shadow-2xl">
+                {shop.name.charAt(0)}
+              </span>
+            </div>
+          </div>
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
         
-        <div className="absolute top-4 left-4 right-4 flex justify-between items-center z-20">
-          <button onClick={onBack} className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white transition-transform active:scale-90">
-            <ArrowLeft size={20}/>
+        <div className="absolute top-6 left-4 right-4 flex justify-between items-center z-20">
+          <button 
+            onClick={onBack} 
+            className="w-12 h-12 rounded-2xl bg-white shadow-xl flex items-center justify-center text-slate-900 transition-all active:scale-90 border border-slate-100"
+            aria-label="Go back"
+          >
+            <ArrowLeft size={24} strokeWidth={2.5} />
           </button>
           <div className="flex gap-2">
-            <button onClick={() => setIsFavorite(!isFavorite)} className={`w-10 h-10 rounded-full backdrop-blur-md flex items-center justify-center text-white transition-all ${isFavorite ? 'bg-rose-500' : 'bg-white/20'}`}>
-              <Heart size={20} fill={isFavorite ? 'white' : 'none'}/>
+            <button onClick={() => setIsFavorite(!isFavorite)} className={`w-12 h-12 rounded-2xl backdrop-blur-xl flex items-center justify-center text-white transition-all border border-white/20 ${isFavorite ? 'bg-rose-500' : 'bg-white/10'}`}>
+              <Heart size={24} fill={isFavorite ? 'white' : 'none'}/>
             </button>
             <div className="relative">
-              <button className={`w-10 h-10 rounded-full bg-emerald-500 flex items-center justify-center text-white shadow-lg transition-all active:scale-90 ${isCartBouncing ? 'scale-125 ring-4 ring-emerald-500/30' : 'scale-100'}`}>
-                <ShoppingCart size={20} className={isCartBouncing ? 'animate-bounce' : ''} />
-                {totalInCart > 0 && (
-                  <span key={totalInCart} className="absolute -top-1 -right-1 bg-white text-emerald-600 text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center border-2 border-emerald-500 animate-in zoom-in">
-                    {totalInCart}
-                  </span>
-                )}
+              <button className={`w-12 h-12 rounded-2xl bg-emerald-500 flex items-center justify-center text-white shadow-xl transition-all active:scale-90 z-10 ${isVisitListBouncing ? 'scale-110 ring-4 ring-emerald-500/30' : 'scale-100'}`}>
+                <Check size={24} className={isVisitListBouncing ? 'animate-bounce' : ''} />
               </button>
             </div>
-            <button onClick={() => setShowQR(true)} className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white transition-transform active:scale-90">
-              <QrCode size={20}/>
-            </button>
           </div>
         </div>
 
-        <div className="absolute bottom-6 left-6">
-          <h1 className="text-3xl font-black text-white">{shop.name}</h1>
-          <div className="flex items-center gap-2 mt-1">
-            <span className="bg-emerald-500 px-2 py-0.5 rounded text-[10px] font-black text-white uppercase">{shop.category}</span>
-            <div className="flex items-center gap-1 text-yellow-400"><Star size={12} fill="currentColor" /><span className="text-xs text-white font-bold">{shop.rating}</span></div>
+        <div className="absolute bottom-8 left-6 right-6">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="bg-emerald-500/90 backdrop-blur-sm px-2 py-0.5 rounded text-[10px] font-black text-white uppercase tracking-wider shadow-sm">{shop.category}</span>
+            <div className="flex items-center gap-1 text-yellow-400 drop-shadow-md"><Star size={12} fill="currentColor" /><span className="text-xs text-white font-bold">{shop.rating}</span></div>
           </div>
+          <h1 className="text-3xl font-black text-white mb-1 drop-shadow-lg">{shop.name}</h1>
+          <p className="text-white/80 text-sm font-medium flex items-center gap-1.5 drop-shadow-md"><MapPin size={14} className="text-emerald-400" /> {shop.address}</p>
         </div>
       </div>
 
       <div className="p-6">
-        {/* Stories Section */}
-        {shop.stories.length > 0 && (
-          <section className="mb-8">
-            <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Daily Specials</h3>
-            <div className="flex gap-3 overflow-x-auto pb-2 -mx-6 px-6 no-scrollbar">
+        {/* Shop Stories Reel */}
+        {shop.stories && shop.stories.length > 0 && (
+          <section className="mb-8 overflow-hidden">
+            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Daily Stories</h3>
+            <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
               {shop.stories.map(story => (
-                <div key={story.id} className="flex-shrink-0 w-24 h-36 rounded-2xl border-2 border-emerald-500 p-0.5">
-                   <img src={story.imageUrl} className="w-full h-full object-cover rounded-xl" />
+                <div key={story.id} className="flex-shrink-0 w-20 h-28 rounded-2xl border-2 border-emerald-500 p-0.5 ring-2 ring-white ring-offset-1">
+                   <div className="relative w-full h-full rounded-[14px] overflow-hidden group">
+                      <img src={story.imageUrl} className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                         <Play size={16} fill="white" className="text-white" />
+                      </div>
+                      <span className="absolute bottom-1.5 left-1.5 text-[6px] font-black text-white bg-black/40 px-1 py-0.5 rounded-md backdrop-blur-sm uppercase">
+                        {story.timestamp}
+                      </span>
+                   </div>
                 </div>
               ))}
-              <div className="flex-shrink-0 w-24 h-36 rounded-2xl bg-slate-100 flex flex-col items-center justify-center text-slate-400 border border-slate-200 border-dashed">
-                <Plus size={24} />
-                <span className="text-[10px] font-bold mt-1">Suggest</span>
-              </div>
             </div>
           </section>
         )}
 
-        <div className="flex items-center justify-between mb-8">
-           <div className={`px-3 py-1.5 rounded-full text-xs font-black uppercase flex items-center gap-1.5 ${shop.isOpen ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
-             <Clock size={14} /> {shop.isOpen ? 'Open Now' : 'Closed'}
+        <div className="grid grid-cols-2 gap-3 mb-8">
+           <div className={`p-4 rounded-[24px] border flex flex-col items-center gap-1.5 transition-colors ${shop.isOpen ? 'bg-emerald-50 border-emerald-100' : 'bg-slate-50 border-slate-100'}`}>
+             <div className={`w-2 h-2 rounded-full ${shop.isOpen ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
+             <span className={`text-[10px] font-black uppercase tracking-widest ${shop.isOpen ? 'text-emerald-700' : 'text-slate-500'}`}>
+               {shop.isOpen ? 'Shop is Open' : 'Currently Closed'}
+             </span>
+             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter italic">Last check: 10m ago</p>
            </div>
-           <p className="text-xs font-bold text-slate-400">Updates 10m ago</p>
-        </div>
-
-        <p className="text-slate-600 leading-relaxed mb-8">{shop.description}</p>
-
-        {/* Action Buttons */}
-        <div className="grid grid-cols-3 gap-4 mb-8">
-           <button className="flex flex-col items-center gap-2 p-4 bg-slate-50 rounded-2xl active:scale-95 transition-all">
-              <Phone className="text-blue-500" />
-              <span className="text-[10px] font-black uppercase">Call</span>
-           </button>
-           <button onClick={() => onStartChat(shop)} className="flex flex-col items-center gap-2 p-4 bg-slate-50 rounded-2xl active:scale-95 transition-all">
-              <MessageCircle className="text-emerald-500" />
-              <span className="text-[10px] font-black uppercase">Chat</span>
-           </button>
-           <button className="flex flex-col items-center gap-2 p-4 bg-slate-50 rounded-2xl active:scale-95 transition-all">
-              <MapPin className="text-violet-500" />
-              <span className="text-[10px] font-black uppercase">Locate</span>
+           <button onClick={() => setShowQR(true)} className="p-4 rounded-[24px] bg-slate-50 border border-slate-100 flex flex-col items-center gap-1.5 active:scale-95 transition-all group">
+              <QrCode size={18} className="text-slate-900 group-hover:scale-110 transition-transform" />
+              <span className="text-[10px] font-black uppercase tracking-widest text-slate-900">Digital Card</span>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Tap to share</p>
            </button>
         </div>
 
-        {/* Product Inventory */}
+        <p className="text-slate-600 leading-relaxed mb-8 font-medium italic border-l-4 border-emerald-100 pl-4 py-1">"{shop.description}"</p>
+
+        <div className="grid grid-cols-3 gap-4 mb-10">
+           <button onClick={handleCall} className="flex flex-col items-center gap-2 p-5 bg-white border border-slate-100 rounded-[28px] active:scale-95 transition-all shadow-sm text-slate-900 group">
+              <div className="w-10 h-10 bg-blue-50 text-blue-500 rounded-2xl flex items-center justify-center group-hover:bg-blue-100 transition-colors"><Phone size={20} /></div>
+              <span className="text-[9px] font-black uppercase tracking-widest">Call Shop</span>
+           </button>
+           <button onClick={() => onStartChat(shop)} className="flex flex-col items-center gap-2 p-5 bg-white border border-slate-100 rounded-[28px] active:scale-95 transition-all shadow-sm text-slate-900 group">
+              <div className="w-10 h-10 bg-emerald-50 text-emerald-500 rounded-2xl flex items-center justify-center group-hover:bg-emerald-100 transition-colors"><MessageCircle size={20} /></div>
+              <span className="text-[9px] font-black uppercase tracking-widest">Live Chat</span>
+           </button>
+           <button onClick={handleNavigate} className="flex flex-col items-center gap-2 p-5 bg-white border border-slate-100 rounded-[28px] active:scale-95 transition-all shadow-sm text-slate-900 group">
+              <div className="w-10 h-10 bg-violet-50 text-violet-500 rounded-2xl flex items-center justify-center group-hover:bg-violet-100 transition-colors"><Map size={20} /></div>
+              <span className="text-[9px] font-black uppercase tracking-widest">Navigate</span>
+           </button>
+        </div>
+
         <section>
-          <div className="flex justify-between items-center mb-4">
-             <h3 className="font-black text-slate-900">Current Stock</h3>
-             <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-tighter">
-               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-               Live Stock
+          <div className="flex justify-between items-center mb-6">
+             <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">Current Inventory</h3>
+             <div className="flex items-center gap-1.5 px-3 py-1 bg-amber-50 rounded-full border border-amber-100">
+               <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+               <span className="text-[10px] font-black text-amber-700 uppercase">Live Stock</span>
              </div>
           </div>
           <div className="space-y-4">
             {shop.products.map(p => {
-              const currentStock = productStocks[p.id];
+              const currentStock = p.stock || 0;
               const isOutOfStock = currentStock === 0;
-              const isRecentlyAdded = lastAdded === p.id;
-
+              const isRecentlyAdded = lastAdded?.id === p.id;
+              const isAnimating = animatingStockId === p.id;
+              const inputQty = (inputQuantities[p.id] as number) || 0;
               return (
-                <div key={p.id} className={`flex gap-4 p-3 bg-white border rounded-2xl shadow-sm transition-all duration-300 ${isRecentlyAdded ? 'border-emerald-400 bg-emerald-50/50 scale-[1.02]' : 'border-slate-100 scale-100'}`}>
+                <div key={p.id} className={`flex gap-4 p-4 bg-white border rounded-[32px] shadow-sm transition-all duration-300 ${isRecentlyAdded ? 'border-emerald-400 bg-emerald-50/20' : 'border-slate-100'}`}>
                   <div className="relative">
-                    <img src={p.imageUrl} className={`w-16 h-16 rounded-xl object-cover transition-opacity ${isOutOfStock ? 'opacity-40 grayscale' : 'opacity-100'}`} />
+                    <img src={p.imageUrl} className={`w-24 h-24 rounded-[24px] object-cover transition-opacity duration-500 ${isOutOfStock ? 'opacity-30 grayscale' : 'opacity-100'}`} alt={p.name} />
                     {isOutOfStock && (
                       <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="bg-slate-900/80 text-white text-[8px] font-black uppercase px-1.5 py-0.5 rounded shadow-lg">Sold Out</span>
+                        <span className="bg-slate-900/90 text-white text-[8px] font-black uppercase px-2 py-0.5 rounded-lg shadow-lg backdrop-blur-sm">Empty</span>
                       </div>
                     )}
                   </div>
-                  <div className="flex-1 flex flex-col justify-between">
+                  <div className="flex-1 flex flex-col justify-between py-1">
                     <div>
-                      <h4 className={`font-bold transition-colors ${isOutOfStock ? 'text-slate-400' : 'text-slate-800'}`}>{p.name}</h4>
-                      <p className={`text-[10px] font-bold uppercase transition-colors ${isOutOfStock ? 'text-rose-400' : 'text-slate-400'}`}>
-                        {isOutOfStock ? 'Out of stock' : `${currentStock} in stock`}
-                      </p>
+                      <h4 className={`font-black text-lg leading-tight transition-colors duration-500 ${isOutOfStock ? 'text-slate-400' : 'text-slate-800'}`}>{p.name}</h4>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md transition-all duration-300 transform ${
+                          isAnimating ? 'scale-110 ring-2 ring-emerald-300 shadow-md' : 'scale-100'
+                        } ${isOutOfStock ? 'bg-rose-50 text-rose-500' : 'bg-emerald-50 text-emerald-600'}`}>
+                          {isOutOfStock ? 'Sold Out' : `${currentStock} in stock`}
+                        </span>
+                      </div>
                     </div>
-                    <p className={`font-black transition-colors ${isOutOfStock ? 'text-slate-300' : 'text-emerald-600'}`}>${p.price.toFixed(2)}</p>
+                    <p className={`font-black text-xl transition-colors duration-500 ${isOutOfStock ? 'text-slate-300' : 'text-slate-900'}`}>${p.price.toFixed(2)}</p>
                   </div>
-                  
-                  <div className="self-center flex flex-col items-center gap-1 relative">
-                    {/* Floating +1 Animation */}
+                  <div className="self-center flex flex-col items-center gap-3 relative pr-2">
                     {isRecentlyAdded && (
-                      <div className="absolute -top-12 left-1/2 -translate-x-1/2 pointer-events-none">
-                        <span className="text-emerald-600 font-black text-xl animate-out fade-out slide-out-to-top duration-700 fill-mode-forwards">
-                          +1
+                      <div className="absolute -top-16 left-1/2 -translate-x-1/2 pointer-events-none z-20">
+                        <span className="text-emerald-600 font-black text-2xl animate-out fade-out slide-out-to-top-12 duration-1000 fill-mode-forwards">
+                          +{lastAdded?.qty}
                         </span>
                       </div>
                     )}
-                    
-                    <button 
-                      onClick={() => handleQuickAdd(p.id)}
-                      disabled={isOutOfStock}
-                      className={`group relative p-3 rounded-xl transition-all active:scale-95 flex items-center gap-2 min-w-[100px] justify-center overflow-hidden ${
-                        isOutOfStock 
-                        ? 'bg-slate-100 text-slate-300 cursor-not-allowed' 
-                        : isRecentlyAdded
-                        ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200'
-                        : 'bg-slate-900 text-white hover:bg-slate-800'
-                      }`}
-                    >
-                      {isRecentlyAdded ? (
-                        <div className="flex items-center gap-2 animate-in zoom-in duration-200">
-                          <Check size={18} strokeWidth={3} />
-                          <span className="text-[10px] font-black uppercase tracking-tighter">Added!</span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2">
-                          <Plus size={18} />
-                          <span className="text-[10px] font-black uppercase tracking-tighter">Quick Add</span>
-                        </div>
-                      )}
-                    </button>
-                    
-                    {cartItems[p.id] > 0 && (
-                      <span className="text-[9px] font-black text-slate-500 uppercase animate-in slide-in-from-top-1">
-                        {cartItems[p.id]} in cart
-                      </span>
+                    {!isOutOfStock && (
+                      <div className="flex flex-col gap-2">
+                        <input 
+                          type="number"
+                          min="1"
+                          max={currentStock}
+                          value={inputQty}
+                          onChange={(e) => handleQuantityChange(p.id, e.target.value)}
+                          className="w-12 h-12 bg-slate-50 border border-slate-200 rounded-2xl text-center font-black text-slate-900 focus:ring-2 focus:ring-emerald-500 transition-all text-sm outline-none"
+                        />
+                        <button 
+                          onClick={() => handleAddToVisitList(p.id)}
+                          className={`p-3 rounded-2xl transition-all active:scale-90 flex items-center justify-center shadow-sm ${
+                            isRecentlyAdded 
+                            ? 'bg-emerald-600 text-white' 
+                            : 'bg-slate-900 text-white'
+                          }`}
+                        >
+                          <Plus size={20} />
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -216,8 +256,23 @@ const ShopDetail: React.FC<ShopDetailProps> = ({ shop, onBack, onStartChat }) =>
             })}
           </div>
         </section>
-      </div>
 
+        <section onClick={handleNavigate} className="mt-12 bg-slate-50 p-6 rounded-[32px] border border-slate-100 group cursor-pointer hover:bg-slate-100 transition-colors">
+           <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Visit Today</h3>
+           <div className="flex items-center gap-4">
+              <div className="w-16 h-16 bg-white rounded-3xl flex items-center justify-center text-emerald-600 shadow-sm transition-transform group-hover:scale-110">
+                 <MapPin size={32} />
+              </div>
+              <div>
+                 <p className="font-bold text-slate-900">Open until 9:00 PM</p>
+                 <p className="text-xs text-slate-500 font-medium">Peak hour: 12 PM - 2 PM</p>
+              </div>
+              <div className="ml-auto">
+                 <ChevronRight className="text-slate-300" />
+              </div>
+           </div>
+        </section>
+      </div>
       {showQR && <QRCodeModal shopId={shop.id} shopName={shop.name} onClose={() => setShowQR(false)} />}
     </div>
   );
