@@ -3,11 +3,13 @@ export type Role = 'BUYER' | 'SELLER';
 
 export interface Product {
   id: string;
+  shopId: string;
   name: string;
   price: number;
   stock: number;
   imageUrl: string;
-  category?: string;
+  category: string;
+  unit: string; // e.g., "pcs", "kg", "loaf"
 }
 
 export interface ShopStory {
@@ -18,6 +20,7 @@ export interface ShopStory {
 
 export interface Shop {
   id: string;
+  sellerId: string;
   name: string;
   category: string;
   description: string;
@@ -29,15 +32,30 @@ export interface Shop {
     lat: number;
     lng: number;
   };
-  products: Product[];
   rating: number;
   reviews: number;
-  stories: ShopStory[];
   viewsToday: number;
+  stories: ShopStory[];
+  products: Product[];
 }
 
-// Added 'PROFILE' to AppView to support navigation items and fix casting errors
-export type AppView = 'ONBOARDING' | 'HOME' | 'SHOP_DETAIL' | 'SELLER_HUB' | 'CHAT_LIST' | 'CHAT_DETAIL' | 'MANAGE_SHOP' | 'PROFILE';
+export interface VisitListItem {
+  productId: string;
+  shopId: string;
+  quantity: number;
+}
+
+export type AppView = 
+  | 'ONBOARDING' 
+  | 'HOME' 
+  | 'SHOP_DETAIL' 
+  | 'SELLER_HUB' 
+  | 'MANAGE_SHOP' 
+  | 'MANAGE_INVENTORY' 
+  | 'PRICE_COMPARE'
+  | 'VISIT_LIST'
+  | 'PROFILE'
+  | 'CHAT';
 
 export interface LocationState {
   lat: number | null;
