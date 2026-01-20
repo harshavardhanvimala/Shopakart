@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Compass, User, ClipboardList, Tag, LayoutDashboard, Package, Settings } from 'lucide-react';
+import { Compass, User, ClipboardList, Search, LayoutDashboard, Package, Settings } from 'lucide-react';
 import { AppView, Role } from '../types';
 
 interface NavigationProps {
@@ -11,48 +11,50 @@ interface NavigationProps {
 
 const Navigation: React.FC<NavigationProps> = ({ currentView, setView, role }) => {
   const buyerNavItems = [
-    { id: 'HOME' as AppView, label: 'Explore', icon: <Compass size={24} /> },
-    { id: 'PRICE_COMPARE' as AppView, label: 'Compare', icon: <Tag size={24} /> },
-    { id: 'VISIT_LIST' as AppView, label: 'My List', icon: <ClipboardList size={24} /> },
-    { id: 'PROFILE' as AppView, label: 'Account', icon: <User size={24} /> },
+    { id: 'HOME' as AppView, label: 'Discover', icon: <Compass /> },
+    { id: 'PRICE_COMPARE' as AppView, label: 'Search', icon: <Search /> },
+    { id: 'VISIT_LIST' as AppView, label: 'Catalog', icon: <ClipboardList /> },
+    { id: 'PROFILE' as AppView, label: 'Pulse', icon: <User /> },
   ];
 
   const sellerNavItems = [
-    { id: 'SELLER_HUB' as AppView, label: 'Dashboard', icon: <LayoutDashboard size={24} /> },
-    { id: 'MANAGE_INVENTORY' as AppView, label: 'Inventory', icon: <Package size={24} /> },
-    { id: 'MANAGE_SHOP' as AppView, label: 'Setup', icon: <Settings size={24} /> },
-    { id: 'PROFILE' as AppView, label: 'Account', icon: <User size={24} /> },
+    { id: 'SELLER_HUB' as AppView, label: 'Insights', icon: <LayoutDashboard /> },
+    { id: 'MANAGE_INVENTORY' as AppView, label: 'Stock', icon: <Package /> },
+    { id: 'MANAGE_SHOP' as AppView, label: 'Store', icon: <Settings /> },
+    { id: 'PROFILE' as AppView, label: 'Me', icon: <User /> },
   ];
 
   const navItems = role === 'BUYER' ? buyerNavItems : sellerNavItems;
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-2xl border-t border-slate-100 px-6 pt-3 pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] flex justify-between items-center z-[80]">
-      {navItems.map((item, idx) => {
-        const isActive = currentView === item.id;
-        return (
-          <button
-            key={idx}
-            onClick={() => setView(item.id)}
-            className="flex flex-col items-center gap-1 group relative outline-none flex-1"
-          >
-            <div className={`h-8 w-16 rounded-full flex items-center justify-center transition-all duration-300 ${
-              isActive ? 'bg-emerald-600 text-white' : 'text-slate-500 hover:bg-slate-100'
-            }`}>
-              {React.cloneElement(item.icon as React.ReactElement<any>, {
-                size: 24,
-                strokeWidth: isActive ? 2.5 : 2
-              })}
-            </div>
-            <span className={`text-[10px] font-black uppercase tracking-widest transition-colors ${
-              isActive ? 'text-emerald-700' : 'text-slate-400'
-            }`}>
-              {item.label}
-            </span>
-          </button>
-        );
-      })}
-    </nav>
+    <div className="fixed bottom-12 left-8 right-8 z-[80]">
+      <nav className="glass-dark dark:glass px-6 py-5 rounded-[44px] flex justify-between items-center shadow-[0_20px_50px_-10px_rgba(30,27,75,0.4)] dark:shadow-[0_20px_50px_-10px_rgba(0,0,0,0.5)]">
+        {navItems.map((item, idx) => {
+          const isActive = currentView === item.id;
+          return (
+            <button
+              key={idx}
+              onClick={() => setView(item.id)}
+              className="flex flex-col items-center gap-2 group relative outline-none flex-1 transition-all"
+            >
+              <div className={`h-12 w-12 rounded-[22px] flex items-center justify-center transition-all duration-300 relative ${
+                isActive ? 'bg-amber-400 text-indigo-950 shadow-lg shadow-amber-400/20' : 'text-indigo-200/40 dark:text-white/20 hover:text-white'
+              }`}>
+                {React.cloneElement(item.icon as React.ReactElement<any>, {
+                  size: 22,
+                  strokeWidth: isActive ? 3 : 2
+                })}
+              </div>
+              <span className={`text-[8px] font-black uppercase tracking-[0.25em] transition-colors ${
+                isActive ? 'text-amber-400' : 'text-indigo-200/20 dark:text-white/10'
+              }`}>
+                {item.label}
+              </span>
+            </button>
+          );
+        })}
+      </nav>
+    </div>
   );
 };
 
