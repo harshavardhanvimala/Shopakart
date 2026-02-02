@@ -54,6 +54,7 @@ export interface AppData {
 
 export type AppView = 
   | 'ONBOARDING' 
+  | 'SIGN_IN'
   | 'HOME' 
   | 'SHOP_DETAIL' 
   | 'SELLER_HUB' 
@@ -62,7 +63,19 @@ export type AppView =
   | 'PRICE_COMPARE'
   | 'VISIT_LIST'
   | 'PROFILE'
-  | 'CHAT';
+  | 'CHAT'
+  | 'MERCHANT_DEALS'
+  | 'MERCHANT_STORES'
+  | 'MERCHANT_PLUS'
+  | 'SHOPPER_DEALS'
+  | 'SHOPPER_STORES'
+  | 'SHOPPER_PLUS'
+  | 'SHOPPER_FAVORITES'
+  | 'SHOPPER_CHATS'
+  | 'SHOPPER_CONTRIBUTIONS'
+  | 'SHOPPER_HISTORY'
+  | 'NOTIFICATIONS'
+  | 'SHOPPER_PRICE_TRACKER';
 
 export interface LocationState {
   lat: number | null;

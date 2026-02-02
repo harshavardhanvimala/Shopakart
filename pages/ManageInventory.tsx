@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { ArrowLeft, Plus, Trash2, Edit2, Save, X, Package, Tag, Layers, Check } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Edit2, Save, X, Package, Tag, Layers } from 'lucide-react';
 import { Product } from '../types';
 
 interface ManageInventoryProps {
@@ -61,131 +61,98 @@ const ManageInventory: React.FC<ManageInventoryProps> = ({ shopId, products, set
   };
 
   const handleDeleteProduct = (id: string) => {
-    if (confirm("Delete this item from your catalog?")) {
+    if (confirm("Delete this item?")) {
       setProducts(prev => prev.filter(p => p.id !== id));
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-24 animate-in slide-in-from-right">
-      <header className="sticky top-0 bg-white/90 backdrop-blur-md z-40 border-b p-6 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <button onClick={onBack} className="p-2 -ml-2 rounded-full hover:bg-slate-100 text-slate-900 transition-colors" aria-label="Go back">
-            <ArrowLeft size={24} />
-          </button>
-          <h1 className="text-xl font-black text-slate-900 tracking-tighter">Live Inventory</h1>
+    <div className="min-h-screen bg-slate-50 dark:bg-obsidian pb-32 animate-in slide-in-from-right">
+      <header className="px-6 pt-16 pb-4 bg-white dark:bg-white/5 border-b border-slate-100 dark:border-white/10 flex items-center justify-between sticky top-0 z-40">
+        <div className="flex items-center gap-3">
+          <button onClick={onBack} className="p-1"><ArrowLeft size={20} className="text-slate-900 dark:text-white" /></button>
+          <h1 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">Stock List</h1>
         </div>
         <button 
           onClick={handleOpenAdd}
-          className="p-3 bg-emerald-600 text-white rounded-2xl shadow-lg active:scale-90 transition-all hover:bg-emerald-700"
+          className="text-xs font-black text-emerald-600 uppercase tracking-widest flex items-center gap-1"
         >
-          <Plus size={24} />
+          <Plus size={16} /> Add Item
         </button>
       </header>
 
-      <div className="p-6 space-y-4">
-        {isFormOpen && (
-          <div className="bg-white p-6 rounded-[32px] border-2 border-emerald-500 shadow-xl space-y-4 animate-in zoom-in duration-200">
-             <div className="flex justify-between items-center mb-2">
-                <h3 className="font-black text-slate-900 uppercase tracking-widest text-xs">
-                  {editingId ? 'Edit Product' : 'New Product'}
-                </h3>
-                <button onClick={() => setIsFormOpen(false)} className="p-1 hover:bg-slate-100 rounded-full transition-colors">
-                  <X size={20} className="text-slate-400" />
-                </button>
-             </div>
-             <div className="space-y-3">
-               <div>
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1 block">Product Name</label>
-                  <input 
-                    type="text" 
-                    placeholder="e.g. Arabica Roast" 
-                    className="w-full p-4 bg-slate-50 rounded-2xl border-none outline-none font-bold text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-emerald-500 transition-all"
-                    value={formData.name}
-                    onChange={e => setFormData({...formData, name: e.target.value})}
-                  />
-               </div>
-               <div className="grid grid-cols-2 gap-3">
-                 <div className="relative">
-                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1 block">Price ($)</label>
-                   <div className="relative">
-                      <input 
-                        type="number" 
-                        placeholder="0.00" 
-                        className="w-full p-4 pl-10 bg-slate-50 rounded-2xl border-none outline-none font-bold text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-emerald-500 transition-all"
-                        value={formData.price || ''}
-                        onChange={e => setFormData({...formData, price: Number(e.target.value)})}
-                      />
-                      <Tag className="absolute left-4 top-4 text-slate-400" size={18} />
-                   </div>
-                 </div>
-                 <div className="relative">
-                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1 block">Units in Stock</label>
-                   <div className="relative">
-                      <input 
-                        type="number" 
-                        placeholder="0" 
-                        className="w-full p-4 pl-10 bg-slate-50 rounded-2xl border-none outline-none font-bold text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-emerald-500 transition-all"
-                        value={formData.stock || ''}
-                        onChange={e => setFormData({...formData, stock: Number(e.target.value)})}
-                      />
-                      <Package className="absolute left-4 top-4 text-slate-400" size={18} />
-                   </div>
-                 </div>
-               </div>
-             </div>
-             <button 
-               onClick={handleSaveProduct}
-               className="w-full py-4 bg-emerald-600 text-white rounded-[20px] font-black uppercase tracking-widest shadow-lg shadow-emerald-200 active:scale-95 transition-all hover:bg-emerald-700 flex items-center justify-center gap-2"
-             >
-               <Save size={18} />
-               {editingId ? 'Update Item' : 'Add to Catalog'}
-             </button>
+      <main className="p-6 space-y-3">
+        {shopProducts.map(p => (
+          <div key={p.id} className="bg-white dark:bg-white/5 p-4 rounded-xl border border-slate-100 dark:border-white/10 flex items-center gap-4 group">
+            <div className="w-12 h-12 rounded-lg overflow-hidden shrink-0">
+              <img src={p.imageUrl} className="w-full h-full object-cover" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h4 className="font-bold text-slate-900 dark:text-white text-sm truncate">{p.name}</h4>
+              <div className="flex items-center gap-3 mt-1">
+                <span className={`text-[10px] font-black uppercase ${p.stock < 10 ? 'text-rose-500' : 'text-slate-400'}`}>
+                  {p.stock} {p.unit}
+                </span>
+                <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">${p.price.toFixed(2)}</span>
+              </div>
+            </div>
+            <div className="flex gap-1">
+              <button onClick={() => handleOpenEdit(p)} className="p-2 text-slate-300 hover:text-emerald-500 transition-colors"><Edit2 size={16} /></button>
+              <button onClick={() => handleDeleteProduct(p.id)} className="p-2 text-slate-300 hover:text-rose-500 transition-colors"><Trash2 size={16} /></button>
+            </div>
+          </div>
+        ))}
+
+        {shopProducts.length === 0 && (
+          <div className="py-20 flex flex-col items-center justify-center text-slate-300 opacity-50">
+            <Package size={48} strokeWidth={1} />
+            <p className="text-[10px] font-black uppercase tracking-widest mt-2">No items listed</p>
           </div>
         )}
+      </main>
 
-        <div className="space-y-3">
-           {shopProducts.map(p => (
-             <div key={p.id} className="bg-white p-4 rounded-[28px] border border-slate-100 flex items-center gap-4 group hover:border-emerald-200 transition-colors shadow-sm">
-                <div className="w-16 h-16 rounded-2xl overflow-hidden shadow-inner flex-shrink-0 border border-slate-50">
-                  <img src={p.imageUrl} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                </div>
-                <div className="flex-1">
-                  <h4 className="font-black text-slate-800 leading-tight">{p.name}</h4>
-                  <div className="flex items-center gap-2 mt-1">
-                     <span className={`text-[10px] font-black px-2 py-0.5 rounded shadow-sm ${p.stock < 10 ? 'bg-rose-50 text-rose-600' : 'bg-slate-50 text-slate-500'}`}>
-                        {p.stock} {p.unit}
-                     </span>
-                     <span className="text-[10px] font-black text-emerald-600 uppercase tracking-tight">${p.price.toFixed(2)}</span>
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <button 
-                    onClick={() => handleOpenEdit(p)}
-                    className="p-3 text-emerald-600 bg-emerald-50 rounded-xl opacity-0 group-hover:opacity-100 transition-all active:scale-90 hover:bg-emerald-100"
-                  >
-                    <Edit2 size={18} />
-                  </button>
-                  <button 
-                    onClick={() => handleDeleteProduct(p.id)}
-                    className="p-3 text-rose-500 bg-rose-50 rounded-xl opacity-0 group-hover:opacity-100 transition-all active:scale-90 hover:bg-rose-100"
-                  >
-                    <Trash2 size={18} />
-                  </button>
-                </div>
+      {isFormOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setIsFormOpen(false)} />
+          <div className="relative w-full max-w-sm bg-white dark:bg-obsidian rounded-2xl p-6 shadow-2xl animate-in zoom-in duration-200">
+             <div className="flex justify-between items-center mb-6">
+                <h3 className="font-black text-slate-900 dark:text-white uppercase text-xs">{editingId ? 'Edit Product' : 'New Product'}</h3>
+                <button onClick={() => setIsFormOpen(false)}><X size={20} className="text-slate-400" /></button>
              </div>
-           ))}
-           {shopProducts.length === 0 && !isFormOpen && (
-             <div className="py-32 flex flex-col items-center justify-center text-slate-300">
-                <div className="p-6 bg-slate-100 rounded-full mb-4">
-                  <Layers size={64} strokeWidth={1} />
-                </div>
-                <p className="font-black uppercase tracking-widest text-xs">Catalog is empty</p>
-                <button onClick={handleOpenAdd} className="mt-4 text-emerald-600 font-bold text-sm underline underline-offset-4 decoration-2">Add your first item</button>
+             <div className="space-y-4">
+               <input 
+                 type="text" 
+                 placeholder="Product Name" 
+                 className="w-full p-4 bg-slate-50 dark:bg-white/5 rounded-xl border-none outline-none font-bold text-sm"
+                 value={formData.name}
+                 onChange={e => setFormData({...formData, name: e.target.value})}
+               />
+               <div className="grid grid-cols-2 gap-3">
+                  <input 
+                    type="number" 
+                    placeholder="Price ($)" 
+                    className="w-full p-4 bg-slate-50 dark:bg-white/5 rounded-xl border-none outline-none font-bold text-sm"
+                    value={formData.price || ''}
+                    onChange={e => setFormData({...formData, price: Number(e.target.value)})}
+                  />
+                  <input 
+                    type="number" 
+                    placeholder="Stock" 
+                    className="w-full p-4 bg-slate-50 dark:bg-white/5 rounded-xl border-none outline-none font-bold text-sm"
+                    value={formData.stock || ''}
+                    onChange={e => setFormData({...formData, stock: Number(e.target.value)})}
+                  />
+               </div>
+               <button 
+                 onClick={handleSaveProduct}
+                 className="w-full py-4 bg-emerald-600 text-white rounded-xl font-black uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2"
+               >
+                 <Save size={18} /> Save Item
+               </button>
              </div>
-           )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

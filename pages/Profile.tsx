@@ -6,9 +6,10 @@ import {
   RefreshCw, ArrowLeft, History, Star, Clock, 
   Zap, Lock, MessageSquare, MessageCircle, Users,
   Bell, Shield, HelpCircle, LogOut, ChevronRight, Eye, Database, Trash2,
-  Sun, Moon, BellOff, MapPin, Fingerprint, Info, Mail, Globe, ShieldCheck
+  Sun, Moon, BellOff, MapPin, Fingerprint, Info, Mail, Globe, ShieldCheck,
+  BrainCircuit
 } from 'lucide-react';
-import { Role } from '../types';
+import { Role, AppView } from '../types';
 
 interface ProfileProps {
   role: Role;
@@ -18,9 +19,11 @@ interface ProfileProps {
   onResetDB?: () => void;
   isDarkMode?: boolean;
   onToggleTheme?: () => void;
+  onNavigate?: (view: AppView) => void;
+  t: (key: string) => string;
 }
 
-const Profile: React.FC<ProfileProps> = ({ role, onLogout, onNavigateToSellerHub, onToggleRole, onResetDB, isDarkMode, onToggleTheme }) => {
+const Profile: React.FC<ProfileProps> = ({ role, onLogout, onNavigateToSellerHub, onToggleRole, onResetDB, isDarkMode, onToggleTheme, onNavigate, t }) => {
   const [activeSubScreen, setActiveSubScreen] = useState<string | null>(null);
   const [toggles, setToggles] = useState({
     notifications: true,
@@ -34,10 +37,11 @@ const Profile: React.FC<ProfileProps> = ({ role, onLogout, onNavigateToSellerHub
   const isSeller = role === 'SELLER';
 
   const buyerMenuItems = [
-    { id: 'favorites', icon: <Heart size={22} />, label: 'Favorites', color: 'text-rose-500', bg: 'bg-rose-50', description: 'Saved shops and products' },
-    { id: 'chats', icon: <MessageSquare size={22} />, label: 'My Chats', color: 'text-blue-500', bg: 'bg-blue-50', description: 'Interactions with merchants' },
-    { id: 'reviews', icon: <Star size={22} />, label: 'Contributions', color: 'text-amber-500', bg: 'bg-amber-50', description: 'Your reviews and ratings' },
-    { id: 'history', icon: <History size={22} />, label: 'History', color: 'text-emerald-500', bg: 'bg-emerald-50', description: 'Recently viewed shops' },
+    { id: 'SHOPPER_FAVORITES', icon: <Heart size={22} />, label: 'Favorites', color: 'text-rose-500', bg: 'bg-rose-50', description: 'Saved shops and products' },
+    { id: 'SHOPPER_PRICE_TRACKER', icon: <BrainCircuit size={22} />, label: 'AI Price Tracker', color: 'text-indigo-500', bg: 'bg-indigo-50', description: 'Monitor deals and trends' },
+    { id: 'SHOPPER_CHATS', icon: <MessageSquare size={22} />, label: 'My Chats', color: 'text-blue-500', bg: 'bg-blue-50', description: 'Interactions with merchants' },
+    { id: 'SHOPPER_CONTRIBUTIONS', icon: <Star size={22} />, label: 'Contributions', color: 'text-amber-500', bg: 'bg-amber-50', description: 'Your reviews and ratings' },
+    { id: 'SHOPPER_HISTORY', icon: <History size={22} />, label: 'History', color: 'text-emerald-500', bg: 'bg-emerald-50', description: 'Recently viewed shops' },
   ];
 
   const sellerMenuItems = [
@@ -57,6 +61,15 @@ const Profile: React.FC<ProfileProps> = ({ role, onLogout, onNavigateToSellerHub
 
   const toggleVal = (key: keyof typeof toggles) => {
     setToggles(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const handleMenuClick = (id: string) => {
+    // If it's a shopper view we handle it via App routing
+    if (id.startsWith('SHOPPER_')) {
+      onNavigate?.(id as AppView);
+    } else {
+      setActiveSubScreen(id);
+    }
   };
 
   const renderSubScreen = () => {
@@ -207,7 +220,8 @@ const Profile: React.FC<ProfileProps> = ({ role, onLogout, onNavigateToSellerHub
           {!['notifications', 'privacy', 'help'].includes(activeSubScreen) && (
             <div className="flex flex-col items-center justify-center text-center py-20">
               <div className={`w-24 h-24 rounded-[32px] ${currentItem?.bg || 'bg-slate-100 dark:bg-white/10'} ${currentItem?.color || 'text-slate-500 dark:text-white/40'} flex items-center justify-center mb-6 shadow-sm`}>
-                {currentItem?.icon && React.cloneElement(currentItem.icon as React.ReactElement, { size: 48 })}
+                {/* Fixed: Use React.ReactElement<any> to allow passing 'size' prop to cloneElement */}
+                {currentItem?.icon && React.cloneElement(currentItem.icon as React.ReactElement<any>, { size: 48 })}
               </div>
               <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-2">{currentItem?.label}</h3>
               <p className="text-slate-500 dark:text-white/40 max-w-xs mb-10 font-medium leading-relaxed">
@@ -284,7 +298,7 @@ const Profile: React.FC<ProfileProps> = ({ role, onLogout, onNavigateToSellerHub
                     <RefreshCw size={20} />
                  </div>
                  <div className="text-left">
-                    <p className="text-[10px] font-black uppercase tracking-widest opacity-60">Switch Workspace</p>
+                    <p className="text-[10px] font-black uppercase tracking-widest opacity-60">{t('switchPortal')}</p>
                     <p className="font-bold">Switch to {isSeller ? 'Buyer' : 'Seller'} Portal</p>
                  </div>
               </div>
@@ -298,7 +312,7 @@ const Profile: React.FC<ProfileProps> = ({ role, onLogout, onNavigateToSellerHub
             {menuItems.map((item, idx) => (
               <button 
                 key={idx}
-                onClick={() => setActiveSubScreen(item.id)}
+                onClick={() => handleMenuClick(item.id)}
                 className="p-5 bg-white dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-[28px] flex flex-col items-start gap-3 hover:bg-slate-50 dark:hover:bg-white/10 transition-colors shadow-sm active:scale-95 text-left group"
               >
                 <div className={`w-12 h-12 ${item.bg} dark:bg-white/10 ${item.color} dark:text-white rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform`}>
@@ -362,7 +376,7 @@ const Profile: React.FC<ProfileProps> = ({ role, onLogout, onNavigateToSellerHub
             {settingsItems.map((item, idx) => (
               <button 
                 key={idx}
-                onClick={() => setActiveSubScreen(item.id)}
+                onClick={() => handleMenuClick(item.id)}
                 className="w-full flex items-center justify-between p-5 bg-white dark:bg-transparent rounded-[24px] mb-1 last:mb-0 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors group"
               >
                 <div className="flex items-center gap-4">
@@ -382,7 +396,7 @@ const Profile: React.FC<ProfileProps> = ({ role, onLogout, onNavigateToSellerHub
           className="w-full py-5 bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 rounded-[28px] font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3 active:scale-95 transition-all border border-rose-100 dark:border-rose-500/20 hover:bg-rose-100 dark:hover:bg-rose-500/20"
         >
           <LogOut size={20} />
-          Sign Out of Shopakart
+          {t('logout')}
         </button>
 
         <p className="text-center text-[10px] font-bold text-slate-300 dark:text-white/10 uppercase tracking-[0.3em] pb-12">

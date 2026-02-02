@@ -7,14 +7,15 @@ interface NavigationProps {
   currentView: AppView;
   setView: (view: AppView) => void;
   role: Role;
+  t: (key: string) => string;
 }
 
-const Navigation: React.FC<NavigationProps> = ({ currentView, setView, role }) => {
+const Navigation: React.FC<NavigationProps> = ({ currentView, setView, role, t }) => {
   const buyerNavItems = [
-    { id: 'HOME' as AppView, label: 'Discover', icon: <Compass /> },
-    { id: 'PRICE_COMPARE' as AppView, label: 'Search', icon: <Search /> },
-    { id: 'VISIT_LIST' as AppView, label: 'Catalog', icon: <ClipboardList /> },
-    { id: 'PROFILE' as AppView, label: 'Pulse', icon: <User /> },
+    { id: 'HOME' as AppView, label: t('explore'), icon: <Compass /> },
+    { id: 'PRICE_COMPARE' as AppView, label: t('search'), icon: <Search /> },
+    { id: 'VISIT_LIST' as AppView, label: t('catalog'), icon: <ClipboardList /> },
+    { id: 'PROFILE' as AppView, label: t('profile'), icon: <User /> },
   ];
 
   const sellerNavItems = [
@@ -28,7 +29,7 @@ const Navigation: React.FC<NavigationProps> = ({ currentView, setView, role }) =
 
   return (
     <div className="fixed bottom-12 left-8 right-8 z-[80]">
-      <nav className="glass-dark dark:glass px-6 py-5 rounded-[44px] flex justify-between items-center shadow-[0_20px_50px_-10px_rgba(30,27,75,0.4)] dark:shadow-[0_20px_50px_-10px_rgba(0,0,0,0.5)]">
+      <nav className="glass-dark px-6 py-5 rounded-[44px] flex justify-between items-center shadow-[0_25px_60px_-10px_rgba(0,0,0,0.6)] border border-white/5">
         {navItems.map((item, idx) => {
           const isActive = currentView === item.id;
           return (
@@ -38,7 +39,7 @@ const Navigation: React.FC<NavigationProps> = ({ currentView, setView, role }) =
               className="flex flex-col items-center gap-2 group relative outline-none flex-1 transition-all"
             >
               <div className={`h-12 w-12 rounded-[22px] flex items-center justify-center transition-all duration-300 relative ${
-                isActive ? 'bg-amber-400 text-indigo-950 shadow-lg shadow-amber-400/20' : 'text-indigo-200/40 dark:text-white/20 hover:text-white'
+                isActive ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'text-white/20 hover:text-white'
               }`}>
                 {React.cloneElement(item.icon as React.ReactElement<any>, {
                   size: 22,
@@ -46,7 +47,7 @@ const Navigation: React.FC<NavigationProps> = ({ currentView, setView, role }) =
                 })}
               </div>
               <span className={`text-[8px] font-black uppercase tracking-[0.25em] transition-colors ${
-                isActive ? 'text-amber-400' : 'text-indigo-200/20 dark:text-white/10'
+                isActive ? 'text-emerald-400' : 'text-white/10'
               }`}>
                 {item.label}
               </span>

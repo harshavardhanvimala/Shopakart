@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { AppView, Shop, Product, Role, VisitListItem } from './types';
 import { MOCK_SHOPS, CATEGORIES } from './constants';
 import Navigation from './components/Navigation';
+import SideMenu from './components/SideMenu';
 import ShopDetail from './pages/ShopDetail';
 import ManageShop from './pages/ManageShop';
 import SellerHub from './pages/SellerHub';
@@ -10,15 +11,33 @@ import ManageInventory from './pages/ManageInventory';
 import Profile from './pages/Profile';
 import VisitList from './pages/VisitList';
 import MapPreview from './components/MapPreview';
+import SignIn from './components/SignIn';
+import MerchantDeals from './pages/MerchantDeals';
+import MerchantStores from './pages/MerchantStores';
+import MerchantPlus from './pages/MerchantPlus';
+import ShopperDeals from './pages/ShopperDeals';
+import ShopperStores from './pages/ShopperStores';
+import ShopperPlus from './pages/ShopperPlus';
+import ShopperFavorites from './pages/ShopperFavorites';
+import ShopperChats from './pages/ShopperChats';
+import ShopperContributions from './pages/ShopperContributions';
+import ShopperHistory from './pages/ShopperHistory';
+import PriceCompare from './pages/PriceCompare';
+import ShopperPriceTracker from './pages/ShopperPriceTracker';
+import Notifications from './pages/Notifications';
+import { TRANSLATIONS, Locale } from './services/i18n';
 import { db } from './database/index';
 import { 
   MapPin, Search, Plus, User, Star, ArrowLeft, 
   Sparkles, Bell, ShoppingBag, ChevronRight, Filter,
-  Sun, Moon
+  Sun, Moon, ShieldCheck, Activity, Globe, Menu, ShoppingCart,
+  Store, Users, ArrowRight, LayoutGrid
 } from 'lucide-react';
 
 const App: React.FC = () => {
   const [isInitializing, setIsInitializing] = useState(true);
+  const [initStatus, setInitStatus] = useState('Loading Market Data');
+  const [locale, setLocale] = useState<Locale>(() => (localStorage.getItem('sk_locale') as Locale) || 'en');
   const [shops, setShops] = useState<Shop[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [visitList, setVisitList] = useState<VisitListItem[]>([]);
@@ -26,8 +45,11 @@ const App: React.FC = () => {
   const [role, setRole] = useState<Role>('BUYER');
   const [selectedShopId, setSelectedShopId] = useState<string | null>(null);
   const [isMapView, setIsMapView] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState('All');
   const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('theme') === 'dark');
+
+  const t = (key: string) => TRANSLATIONS[locale]?.[key] || TRANSLATIONS['en'][key] || key;
 
   useEffect(() => {
     if (isDarkMode) {
@@ -42,20 +64,22 @@ const App: React.FC = () => {
   useEffect(() => {
     const initData = async () => {
       try {
+        setInitStatus('Fetching Inventory');
         await db.init();
+        setInitStatus('Connecting Merchants');
         const storedShops = await db.getData<Shop[]>('shops');
         const storedProducts = await db.getData<Product[]>('products');
         const storedVisitList = await db.getData<VisitListItem[]>('visitList');
-
         setShops(storedShops || MOCK_SHOPS);
-        if (!storedShops) await db.saveData('shops', MOCK_SHOPS);
-
         setProducts(storedProducts || MOCK_SHOPS.flatMap(s => s.products.map(p => ({ ...p, shopId: s.id }))));
         setVisitList(storedVisitList || []);
+        setInitStatus('Welcome to Shopakart');
       } catch (error) {
         console.error("DB Error:", error);
       } finally {
-        setTimeout(() => setIsInitializing(false), 1200);
+        setTimeout(() => {
+          setIsInitializing(false);
+        }, 2800);
       }
     };
     initData();
@@ -65,13 +89,15 @@ const App: React.FC = () => {
   useEffect(() => { if (!isInitializing) db.saveData('products', products); }, [products, isInitializing]);
   useEffect(() => { if (!isInitializing) db.saveData('visitList', visitList); }, [visitList, isInitializing]);
 
-  const myShop = useMemo(() => shops[0] || MOCK_SHOPS[0], [shops]);
+  const myShop = useMemo(() => shops.find(s => s.sellerId === 'seller-1') || shops[0] || MOCK_SHOPS[0], [shops]);
   const activeShop = useMemo(() => shops.find(s => s.id === selectedShopId), [shops, selectedShopId]);
 
   const filteredShops = useMemo(() => {
     if (activeCategory === 'All') return shops;
-    return shops.filter(s => s.category.toLowerCase() === activeCategory.toLowerCase());
+    return shops.filter(shop => shop.category.toLowerCase() === activeCategory.toLowerCase());
   }, [shops, activeCategory]);
+
+  const displayCategories = [{ id: 'all', name: 'All', icon: <LayoutGrid size={18} /> }, ...CATEGORIES];
 
   const handleOpenShop = (shop: Shop) => {
     setSelectedShopId(shop.id);
@@ -89,215 +115,313 @@ const App: React.FC = () => {
     });
   };
 
+  const handleRoleSelection = (selectedRole: Role) => {
+    setRole(selectedRole);
+    setView('SIGN_IN');
+  };
+
+  const handleSignInSuccess = () => {
+    if (role === 'SELLER') {
+      setView('SELLER_HUB');
+    } else {
+      setView('HOME');
+    }
+  };
+
   if (isInitializing) {
     return (
-      <div className="h-screen bg-indigo-950 flex flex-col items-center justify-center">
-        <div className="relative">
-          <div className="w-28 h-28 bg-white/10 rounded-[40px] flex items-center justify-center backdrop-blur-3xl border border-white/20 animate-[pulse_2s_infinite]">
-             <ShoppingBag size={48} className="text-amber-400" />
+      <div className="h-screen bg-obsidian flex flex-col items-center justify-center relative overflow-hidden transition-colors duration-1000">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[150%] h-[150%] bg-emerald-600/5 rounded-full animate-aura-pulse" />
+        <div className="relative animate-logo-pop">
+          <div className="relative w-32 h-32 bg-white/5 backdrop-blur-3xl rounded-[44px] border border-white/20 flex items-center justify-center shadow-2xl overflow-hidden">
+            <ShoppingBag size={56} className="text-emerald-400 relative z-10" />
           </div>
-          <div className="absolute -inset-8 bg-amber-400/10 rounded-full blur-[60px]" />
         </div>
-        <p className="mt-12 font-black text-amber-400 uppercase tracking-[0.6em] text-[10px] animate-pulse">Shopakart Core</p>
+        <div className="mt-20 flex flex-col items-center gap-4">
+          <h2 className="text-3xl font-black text-white tracking-tighter">Shopa<span className="text-emerald-400">kart</span></h2>
+          <span className="text-[10px] font-black text-white/60 uppercase tracking-[0.3em]">{initStatus}</span>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="h-full w-full bg-slate-50 dark:bg-indigo-950 relative overflow-hidden flex flex-col transition-colors duration-500">
-      {/* Main content area handles scrolling for most views */}
-      <div className={`flex-1 relative ${view !== 'ONBOARDING' ? 'scroll-container no-scrollbar' : 'overflow-hidden'}`}>
+    <div className="h-full w-full bg-[#f1f3f6] dark:bg-obsidian relative overflow-hidden flex flex-col transition-colors duration-500">
+      <div className={`flex-1 relative ${view !== 'ONBOARDING' && view !== 'SIGN_IN' ? 'scroll-container no-scrollbar' : 'overflow-hidden'}`}>
+        
         {view === 'ONBOARDING' && (
-          <div className="h-full bg-indigo-950 flex flex-col items-center justify-center p-12 text-center relative overflow-hidden">
-            <div className="absolute top-[-20%] right-[-20%] w-[80%] h-[40%] bg-indigo-500/20 blur-[120px] rounded-full" />
-            <div className="absolute bottom-[-10%] left-[-10%] w-[60%] h-[30%] bg-amber-500/10 blur-[100px] rounded-full" />
-            
-            <div className="relative w-56 h-56 mb-12">
-              <div className="absolute inset-0 bg-white/5 rounded-[5rem] rotate-12" />
-              <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 to-indigo-800 rounded-[5rem] flex items-center justify-center shadow-2xl">
-                <span className="text-[10rem] font-black tracking-tighter italic text-white/20 absolute">S</span>
-                <ShoppingBag size={80} className="text-amber-400 relative z-10" />
-              </div>
+          <div className="h-full bg-obsidian flex flex-col p-8 pt-20 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-[80%] h-[50%] bg-emerald-500/10 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/2" />
+            <div className="absolute bottom-0 left-0 w-[80%] h-[50%] bg-indigo-500/10 rounded-full blur-[120px] translate-y-1/2 -translate-x-1/2" />
+
+            <div className="relative z-10 text-center mb-16">
+              <h1 className="text-5xl font-black text-white tracking-tighter mb-4">
+                Shopa<span className="text-emerald-400 italic">kart</span>
+              </h1>
+              <p className="text-[10px] font-black text-white/30 uppercase tracking-[0.5em]">Experience the Local Pulse</p>
             </div>
-            
-            <h1 className="text-6xl font-black text-white mb-6 tracking-tighter leading-none">Shopa<span className="text-amber-400">kart</span></h1>
-            <p className="text-indigo-200/60 mb-16 max-w-[260px] font-medium text-xl leading-snug">The premium pulse of your local marketplace.</p>
-            
-            <div className="w-full space-y-4 max-w-xs">
-              <button onClick={() => { setRole('BUYER'); setView('HOME'); }} className="w-full py-6 bg-white text-indigo-950 rounded-[32px] font-extrabold text-xl active:scale-95 transition-all shadow-xl">Explore Nearby</button>
-              <button onClick={() => { setRole('SELLER'); setView('SELLER_HUB'); }} className="w-full py-6 bg-indigo-900/50 text-indigo-200 border border-indigo-700/50 rounded-[32px] font-extrabold text-xl active:scale-95 transition-all">Merchant Portal</button>
+
+            <div className="flex-1 flex flex-col justify-center gap-6 relative z-10">
+              <button 
+                onClick={() => handleRoleSelection('BUYER')}
+                className="group relative bg-white/5 border border-white/10 p-8 rounded-[44px] flex flex-col items-start gap-4 transition-all hover:bg-white/10 hover:border-emerald-500/30 text-left active:scale-[0.98]"
+              >
+                <div className="w-16 h-16 bg-emerald-500 text-white rounded-[22px] flex items-center justify-center shadow-lg shadow-emerald-500/20 group-hover:scale-110 transition-transform">
+                  <ShoppingBag size={32} />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-black text-white tracking-tight">I'm a Shopper</h3>
+                  <p className="text-white/40 text-sm font-medium mt-1 leading-snug">Browse local stores, track inventory, and plan your physical visits.</p>
+                </div>
+                <div className="absolute top-8 right-8 text-white/10 group-hover:text-emerald-400 transition-colors">
+                  <ArrowRight size={28} />
+                </div>
+              </button>
+
+              <button 
+                onClick={() => handleRoleSelection('SELLER')}
+                className="group relative bg-white/5 border border-white/10 p-8 rounded-[44px] flex flex-col items-start gap-4 transition-all hover:bg-white/10 hover:border-indigo-500/30 text-left active:scale-[0.98]"
+              >
+                <div className="w-16 h-16 bg-indigo-600 text-white rounded-[22px] flex items-center justify-center shadow-lg shadow-indigo-500/20 group-hover:scale-110 transition-transform">
+                  <Store size={32} />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-black text-white tracking-tight">I'm a Merchant</h3>
+                  <p className="text-white/40 text-sm font-medium mt-1 leading-snug">Manage your stock, update location, and connect with nearby buyers.</p>
+                </div>
+                <div className="absolute top-8 right-8 text-white/10 group-hover:text-indigo-400 transition-colors">
+                  <ArrowRight size={28} />
+                </div>
+              </button>
             </div>
+
+            <footer className="relative z-10 mt-12 pb-8 text-center">
+              <p className="text-[9px] font-black text-white/10 uppercase tracking-[0.4em]">Powered by Shopakart Commerce Engine</p>
+            </footer>
           </div>
+        )}
+
+        {view === 'SIGN_IN' && (
+          <SignIn 
+            targetRole={role} 
+            onSuccess={handleSignInSuccess} 
+            onBack={() => setView('ONBOARDING')} 
+            t={t}
+          />
         )}
 
         {view === 'HOME' && (
           <div className="min-h-full">
-            {/* Glossy Header */}
-            <header className="px-8 pt-14 pb-6 flex justify-between items-end">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <div className="w-2 h-2 bg-amber-400 rounded-full animate-pulse" />
-                  <p className="text-[10px] font-bold text-slate-400 dark:text-indigo-300/50 uppercase tracking-[0.3em]">Live Updates</p>
+            <header className="bg-emerald-600 px-4 pt-12 pb-4 sticky top-0 z-50 shadow-md transition-all">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <button 
+                    onClick={() => setIsMenuOpen(true)}
+                    className="w-10 h-10 flex items-center justify-center text-white active:scale-90 transition-transform"
+                  >
+                    <Menu size={24} />
+                  </button>
+                  <div className="flex flex-col">
+                    <span className="text-white font-black italic text-xl leading-none">Shopakart</span>
+                    <span className="text-emerald-100 text-[8px] font-bold italic tracking-widest flex items-center gap-1">PLUS <Sparkles size={8} className="fill-emerald-100" /></span>
+                  </div>
                 </div>
-                <h1 className="text-4xl font-black text-indigo-950 dark:text-white tracking-tighter">Indiranagar</h1>
+                <div className="flex items-center gap-4 text-white">
+                  <button 
+                    onClick={() => setView('NOTIFICATIONS')}
+                    className="w-10 h-10 flex items-center justify-center relative active:scale-90 transition-all"
+                  >
+                    <Bell size={22} />
+                    <div className="absolute top-2 right-2 w-2 h-2 bg-pink-500 rounded-full border-2 border-emerald-600" />
+                  </button>
+                  <ShoppingCart size={22} onClick={() => setView('VISIT_LIST')} />
+                </div>
               </div>
-              <div className="flex gap-3">
-                <button 
-                  onClick={() => setIsDarkMode(!isDarkMode)}
-                  className="w-14 h-14 bg-white dark:bg-white/10 rounded-3xl flex items-center justify-center text-indigo-950 dark:text-amber-400 border border-indigo-100 dark:border-white/10 shadow-xl shadow-indigo-100/50 dark:shadow-none transition-all"
-                >
-                  {isDarkMode ? <Sun size={24} strokeWidth={2.5} /> : <Moon size={24} strokeWidth={2.5} />}
-                </button>
-                <button onClick={() => setView('PROFILE')} className="w-14 h-14 bg-white dark:bg-white/10 rounded-3xl flex items-center justify-center text-indigo-950 dark:text-white border border-indigo-100 dark:border-white/10 shadow-xl shadow-indigo-100/50 dark:shadow-none transition-all"><User size={24} strokeWidth={2.5} /></button>
+              <div 
+                onClick={() => setView('PRICE_COMPARE')}
+                className="bg-white rounded-md flex items-center px-3 py-2.5 shadow-inner cursor-text"
+              >
+                <Search size={18} className="text-slate-400 mr-2" />
+                <input 
+                  type="text" 
+                  readOnly
+                  placeholder="Search for Shops, Products or Items" 
+                  className="bg-transparent border-none outline-none text-sm w-full font-medium cursor-text"
+                />
               </div>
             </header>
 
-            {/* Bento-Style Discovery Card */}
-            <section className="px-6 mt-6 grid grid-cols-2 gap-4">
-              <div onClick={() => setIsMapView(true)} className="col-span-2 relative h-56 bg-indigo-900 rounded-[40px] overflow-hidden shadow-2xl shadow-indigo-200 dark:shadow-indigo-900/40 group active:scale-[0.98] transition-all">
-                <MapPreview shops={shops} onShopClick={handleOpenShop} />
-                <div className="absolute inset-0 bg-indigo-950/20 pointer-events-none" />
-                <div className="absolute top-6 left-6 flex items-center gap-2 glass px-4 py-2 rounded-full border border-white/20">
-                  <div className="w-1.5 h-1.5 bg-amber-400 rounded-full animate-ping" />
-                  <span className="text-[10px] font-black text-indigo-950 dark:text-white uppercase tracking-widest">Active Area</span>
-                </div>
-                <div className="absolute bottom-6 left-6 right-6 flex justify-between items-end">
-                  <h4 className="text-white font-black text-2xl tracking-tighter leading-none">Market Radar</h4>
-                  <div className="w-10 h-10 bg-white rounded-2xl flex items-center justify-center text-indigo-950"><ChevronRight size={20} /></div>
-                </div>
-              </div>
-
-              <div onClick={() => setView('PRICE_COMPARE')} className="bg-amber-400 h-44 rounded-[40px] p-6 flex flex-col justify-between shadow-xl shadow-amber-100 dark:shadow-amber-900/20 group active:scale-[0.98] transition-all">
-                <div className="w-10 h-10 bg-white/30 rounded-2xl flex items-center justify-center text-white"><Search size={22} strokeWidth={3} /></div>
-                <div>
-                  <h4 className="font-black text-indigo-950 text-xl tracking-tighter leading-tight">Stock Search</h4>
-                  <p className="text-indigo-900/60 text-[10px] font-bold uppercase tracking-widest mt-1">Live Inventory</p>
-                </div>
-              </div>
-
-              <div onClick={() => setView('VISIT_LIST')} className="bg-indigo-950 dark:bg-white/10 h-44 rounded-[40px] p-6 flex flex-col justify-between shadow-xl shadow-indigo-100 dark:shadow-none group active:scale-[0.98] transition-all">
-                <div className="w-10 h-10 bg-white/10 dark:bg-white/20 rounded-2xl flex items-center justify-center text-white"><Plus size={22} strokeWidth={3} /></div>
-                <div>
-                  <h4 className="font-black text-white text-xl tracking-tighter leading-tight">My Catalog</h4>
-                  <p className="text-indigo-300/60 dark:text-white/40 text-[10px] font-bold uppercase tracking-widest mt-1">{visitList.length} Items Planned</p>
-                </div>
-              </div>
-            </section>
-
-            {/* Editorial Category Chips */}
-            <section className="mt-12 px-6">
-              <div className="flex items-center justify-between mb-6 px-2">
-                <h3 className="text-xs font-black text-indigo-950/30 dark:text-white/20 uppercase tracking-[0.4em]">Curated</h3>
-                <Filter size={16} className="text-indigo-900/20 dark:text-white/10" />
-              </div>
-              <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2">
-                {['All', ...CATEGORIES.map(c => c.name)].map(cat => (
-                  <button 
-                    key={cat}
-                    onClick={() => setActiveCategory(cat)}
-                    className={`px-8 py-3.5 rounded-full text-xs font-black uppercase tracking-widest transition-all ${
-                      activeCategory === cat ? 'bg-indigo-950 dark:bg-amber-400 text-white dark:text-indigo-950 shadow-2xl shadow-indigo-200 dark:shadow-amber-900/40' : 'bg-white dark:bg-white/5 text-indigo-900/40 dark:text-white/30 border border-indigo-50 dark:border-white/10'
-                    }`}
-                  >
-                    {cat}
+            <section className="bg-white dark:bg-white/5 py-4 px-4 flex gap-6 overflow-x-auto no-scrollbar border-b border-slate-200 dark:border-white/10">
+              {displayCategories.map(cat => {
+                const isActive = activeCategory === cat.name;
+                return (
+                  <button key={cat.id} onClick={() => setActiveCategory(cat.name)} className="flex flex-col items-center gap-1.5 shrink-0 transition-all">
+                    <div className={`w-14 h-14 rounded-full flex items-center justify-center border transition-all shadow-sm ${
+                      isActive 
+                        ? 'bg-emerald-600 border-emerald-600 text-white scale-110' 
+                        : 'bg-slate-50 dark:bg-white/10 text-emerald-600 border-slate-100 dark:border-white/5'
+                    }`}>
+                      {cat.icon}
+                    </div>
+                    <span className={`text-[10px] font-black uppercase transition-colors ${
+                      isActive ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-700 dark:text-white/60'
+                    }`}>
+                      {cat.name}
+                    </span>
                   </button>
-                ))}
-              </div>
+                );
+              })}
             </section>
 
-            {/* Staggered Merchant Grid */}
-            <section className="px-6 mt-8 grid grid-cols-1 gap-6">
-              {filteredShops.map((shop, idx) => (
-                <div 
-                  key={shop.id} 
-                  onClick={() => handleOpenShop(shop)} 
-                  className={`bg-white dark:bg-white/5 rounded-[48px] overflow-hidden border border-indigo-50 dark:border-white/10 shadow-xl shadow-indigo-100/40 dark:shadow-none group active:scale-[0.98] transition-all ${idx % 2 === 0 ? 'rounded-br-none' : 'rounded-bl-none'}`}
-                >
-                  <div className="h-64 relative">
-                    <img src={shop.imageUrl} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-                    <div className="absolute top-6 right-6 glass px-3 py-1.5 rounded-full border border-white/20 flex items-center gap-1.5 shadow-xl">
-                      <Star size={12} fill="#fbbf24" className="text-amber-400" />
-                      <span className="text-[10px] font-black text-indigo-950 dark:text-white">{shop.rating}</span>
-                    </div>
+            <section className="px-3 mt-4 grid grid-cols-4 gap-2">
+              {[
+                { label: 'Map View', icon: <MapPin />, color: 'bg-blue-500', action: () => setIsMapView(true) },
+                { label: 'Deals', icon: <Sparkles />, color: 'bg-pink-500', action: () => setView('SHOPPER_DEALS') },
+                { label: 'Stores', icon: <ShoppingBag />, color: 'bg-emerald-500', action: () => setView('SHOPPER_STORES') },
+                { label: 'Plus', icon: <Star />, color: 'bg-amber-500', action: () => setView('SHOPPER_PLUS') }
+              ].map((item, i) => (
+                <div key={i} onClick={item.action} className="bg-white dark:bg-white/5 rounded-xl p-3 flex flex-col items-center gap-2 border border-slate-100 dark:border-white/10 shadow-sm active:scale-95 transition-all cursor-pointer">
+                  <div className={`${item.color} text-white p-2 rounded-lg shadow-md`}>
+                    {React.cloneElement(item.icon as any, { size: 18 })}
                   </div>
-                  <div className="p-8">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <span className="text-[10px] font-black text-indigo-400 dark:text-amber-400/60 uppercase tracking-[0.2em] mb-2 block">{shop.category}</span>
-                        <h4 className="font-black text-indigo-950 dark:text-white text-3xl tracking-tighter leading-tight">{shop.name}</h4>
-                      </div>
-                      <div className={`w-3 h-3 rounded-full mt-2 ${shop.isOpen ? 'bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.5)]' : 'bg-slate-200 dark:bg-white/20'}`} />
-                    </div>
-                    <div className="flex items-center justify-between mt-6">
-                      <div className="flex items-center gap-2 text-slate-400 dark:text-white/30 text-[10px] font-bold uppercase tracking-widest">
-                        <MapPin size={12} className="text-indigo-400 dark:text-amber-400" /> 0.4 MILES
-                      </div>
-                      <button className="text-[10px] font-black text-indigo-950 dark:text-white uppercase underline decoration-2 underline-offset-4 decoration-amber-400">View Catalog</button>
-                    </div>
-                  </div>
+                  <span className="text-[9px] font-black uppercase tracking-tighter text-slate-500 dark:text-white/40">{item.label}</span>
                 </div>
               ))}
+            </section>
+
+            <section className="mt-8">
+              <div className="px-5 flex items-center justify-between mb-4">
+                <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tighter">Nearby Opportunities</h3>
+                <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">{activeCategory}</span>
+              </div>
+              <div className="px-4 flex gap-4 overflow-x-auto no-scrollbar pb-6">
+                {filteredShops.map(shop => (
+                  <div key={shop.id} onClick={() => handleOpenShop(shop)} className="w-48 shrink-0 bg-white dark:bg-white/5 rounded-2xl overflow-hidden border border-slate-200 dark:border-white/10 shadow-sm active:scale-95 transition-all cursor-pointer">
+                    <div className="h-28 relative">
+                      <img src={shop.imageUrl} className="w-full h-full object-cover" />
+                      <div className="absolute top-2 right-2 bg-emerald-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded flex items-center gap-1">
+                        {shop.rating} <Star size={8} fill="white" />
+                      </div>
+                    </div>
+                    <div className="p-3">
+                      <h4 className="font-black text-slate-800 dark:text-white text-sm truncate">{shop.name}</h4>
+                      <p className="text-[9px] font-bold text-slate-400 uppercase mt-1 tracking-wider">{shop.category}</p>
+                    </div>
+                  </div>
+                ))}
+                {filteredShops.length === 0 && (
+                  <div className="w-full py-12 flex flex-col items-center justify-center text-slate-400 opacity-50">
+                    <Search size={32} strokeWidth={1} />
+                    <p className="text-xs font-bold uppercase tracking-widest mt-2">No shops found in {activeCategory}</p>
+                  </div>
+                )}
+              </div>
             </section>
           </div>
         )}
 
         {view === 'SHOP_DETAIL' && activeShop && (
-          <ShopDetail shop={activeShop} onBack={() => setView('HOME')} onStartChat={(s) => { setSelectedShopId(s.id); setView('CHAT'); }} onPlanVisit={handleAddToVisitList} />
+          <ShopDetail 
+            shop={activeShop} 
+            role={role}
+            onBack={() => setView(role === 'SELLER' ? 'SELLER_HUB' : 'HOME')} 
+            onStartChat={(s) => { setSelectedShopId(s.id); setView('CHAT'); }} 
+            onPlanVisit={handleAddToVisitList}
+            onEditShop={() => setView('MANAGE_SHOP')}
+            onManageInventory={() => setView('MANAGE_INVENTORY')}
+            onEditProduct={(id) => { setSelectedShopId(activeShop.id); setView('MANAGE_INVENTORY'); }}
+            t={t} 
+          />
         )}
 
         {view === 'VISIT_LIST' && (
-          <VisitList items={visitList} shops={shops} products={products} onRemoveItem={(id) => setVisitList(l => l.filter(i => i.productId !== id))} onVisitShop={handleOpenShop} onExplore={() => setView('HOME')} />
-        )}
-
-        {view === 'PRICE_COMPARE' && (
-          <div className="px-8">
-            <header className="py-14 flex items-center gap-4">
-              <button onClick={() => setView('HOME')} className="w-14 h-14 bg-white dark:bg-white/10 rounded-3xl flex items-center justify-center border border-indigo-50 dark:border-white/10 shadow-xl shadow-indigo-100/50 dark:shadow-none text-indigo-950 dark:text-white"><ArrowLeft size={24} strokeWidth={3} /></button>
-              <h2 className="text-4xl font-black text-indigo-950 dark:text-white tracking-tighter">Market Pulse</h2>
-            </header>
-            <div className="space-y-6">
-              {products.map(p => {
-                const s = shops.find(sh => sh.id === p.shopId);
-                return (
-                  <div key={p.id} onClick={() => s && handleOpenShop(s)} className="p-6 bg-white dark:bg-white/5 border border-indigo-50 dark:border-white/10 rounded-[40px] flex items-center gap-6 shadow-xl shadow-indigo-100/30 dark:shadow-none active:scale-[0.98] transition-all">
-                    <div className="w-20 h-20 rounded-[28px] overflow-hidden bg-slate-50 dark:bg-white/10 shadow-inner"><img src={p.imageUrl} className="w-full h-full object-cover" /></div>
-                    <div className="flex-1">
-                      <h4 className="font-black text-indigo-950 dark:text-white text-xl leading-none mb-1 tracking-tight">{p.name}</h4>
-                      <p className="text-[10px] font-bold text-slate-400 dark:text-white/30 uppercase tracking-widest">at {s?.name}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-3xl font-black text-indigo-950 dark:text-white tracking-tighter leading-none">${p.price}</p>
-                      <span className="text-[10px] font-black text-amber-500 uppercase">{p.stock} units</span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+          <VisitList items={visitList} shops={shops} products={products} onRemoveItem={(id) => setVisitList(l => l.filter(i => i.productId !== id))} onVisitShop={handleOpenShop} onExplore={() => setView('HOME')} onBack={() => setView('HOME')} t={t} />
         )}
 
         {view === 'PROFILE' && (
-          <Profile role={role} isDarkMode={isDarkMode} onToggleTheme={() => setIsDarkMode(!isDarkMode)} onLogout={() => setView('ONBOARDING')} onToggleRole={() => { setRole(r => r === 'BUYER' ? 'SELLER' : 'BUYER'); setView(role === 'BUYER' ? 'SELLER_HUB' : 'HOME'); }} />
+          <Profile 
+            role={role} 
+            isDarkMode={isDarkMode} 
+            onToggleTheme={() => setIsDarkMode(!isDarkMode)} 
+            onLogout={() => setView('ONBOARDING')} 
+            onToggleRole={() => { setRole(r => r === 'BUYER' ? 'SELLER' : 'BUYER'); setView(role === 'BUYER' ? 'SELLER_HUB' : 'HOME'); }} 
+            onNavigate={(v) => setView(v)}
+            t={t} 
+          />
         )}
 
-        {view === 'SELLER_HUB' && <SellerHub shop={myShop} onEditShop={() => setView('MANAGE_SHOP')} onAddStock={() => setView('MANAGE_INVENTORY')} />}
+        {view === 'SELLER_HUB' && (
+          <SellerHub 
+            shop={myShop} 
+            onEditShop={() => setView('MANAGE_SHOP')} 
+            onAddStock={() => setView('MANAGE_INVENTORY')} 
+            onViewDeals={() => setView('MERCHANT_DEALS')}
+            onViewStores={() => setView('MERCHANT_STORES')}
+            onViewPlus={() => setView('MERCHANT_PLUS')}
+            t={t} 
+          />
+        )}
+        
+        {view === 'MERCHANT_DEALS' && <MerchantDeals shop={myShop} onBack={() => setView('SELLER_HUB')} />}
+        {view === 'MERCHANT_STORES' && <MerchantStores shops={shops} onBack={() => setView('SELLER_HUB')} />}
+        {view === 'MERCHANT_PLUS' && <MerchantPlus onBack={() => setView('SELLER_HUB')} />}
+
+        {view === 'SHOPPER_DEALS' && <ShopperDeals shops={shops} onBack={() => setView('HOME')} onOpenShop={handleOpenShop} />}
+        {view === 'SHOPPER_STORES' && <ShopperStores shops={shops} onBack={() => setView('HOME')} onOpenShop={handleOpenShop} />}
+        {view === 'SHOPPER_PLUS' && <ShopperPlus onBack={() => setView('HOME')} />}
+        
+        {view === 'SHOPPER_FAVORITES' && <ShopperFavorites shops={shops} onBack={() => setView('PROFILE')} onOpenShop={handleOpenShop} />}
+        {view === 'SHOPPER_CHATS' && <ShopperChats onBack={() => setView('PROFILE')} />}
+        {view === 'SHOPPER_CONTRIBUTIONS' && <ShopperContributions onBack={() => setView('PROFILE')} />}
+        {view === 'SHOPPER_HISTORY' && <ShopperHistory shops={shops} onBack={() => setView('PROFILE')} onOpenShop={handleOpenShop} />}
+        {view === 'SHOPPER_PRICE_TRACKER' && <ShopperPriceTracker onBack={() => setView('HOME')} />}
+
+        {view === 'NOTIFICATIONS' && <Notifications onBack={() => setView('HOME')} />}
+
+        {view === 'PRICE_COMPARE' && (
+          <PriceCompare 
+            products={products} 
+            shops={shops} 
+            onBack={() => setView('HOME')} 
+            onOpenShop={handleOpenShop} 
+            onNavigateToPriceTracker={() => setView('SHOPPER_PRICE_TRACKER')}
+            t={t} 
+          />
+        )}
+
         {view === 'MANAGE_INVENTORY' && <ManageInventory shopId={myShop.id} products={products} setProducts={setProducts} onBack={() => setView('SELLER_HUB')} />}
         {view === 'MANAGE_SHOP' && <ManageShop shop={myShop} onSave={(s) => { setShops(prev => prev.map(sh => sh.id === s.id ? s : sh)); setView('SELLER_HUB'); }} onBack={() => setView('SELLER_HUB')} />}
 
         {isMapView && (
-          <div className="fixed inset-0 z-[100] bg-white dark:bg-indigo-950 animate-in slide-in-from-bottom duration-500">
-            <header className="px-8 pt-14 pb-6 flex justify-between items-center border-b border-indigo-50 dark:border-white/10">
-              <h2 className="text-3xl font-black text-indigo-950 dark:text-white tracking-tighter">Live Map</h2>
-              <button onClick={() => setIsMapView(false)} className="w-14 h-14 bg-indigo-50 dark:bg-white/10 rounded-full flex items-center justify-center text-indigo-950 dark:text-white active:rotate-90 transition-transform"><Plus className="rotate-45" size={28} /></button>
+          <div className="fixed inset-0 z-[100] bg-white dark:bg-obsidian animate-in slide-in-from-bottom duration-500">
+            <header className="px-6 pt-14 pb-6 flex items-center gap-4 border-b border-slate-100 dark:border-white/10 bg-emerald-600 text-white">
+              <button 
+                onClick={() => setIsMapView(false)} 
+                className="w-11 h-11 bg-white/20 rounded-2xl flex items-center justify-center active:scale-95 transition-all"
+              >
+                <ArrowLeft size={22} strokeWidth={2.5} />
+              </button>
+              <h2 className="text-2xl font-black tracking-tighter">Live Map</h2>
             </header>
             <div className="h-full pb-20"><MapPreview shops={shops} onShopClick={handleOpenShop} /></div>
           </div>
         )}
       </div>
 
-      {(view === 'HOME' || view === 'PRICE_COMPARE' || view === 'VISIT_LIST' || view === 'PROFILE' || view === 'SELLER_HUB' || view === 'MANAGE_INVENTORY' || view === 'MANAGE_SHOP') && (
-        <Navigation currentView={view} setView={setView} role={role} />
+      {(view === 'HOME' || view === 'VISIT_LIST' || view === 'PROFILE' || view === 'SELLER_HUB' || view === 'MANAGE_INVENTORY' || view === 'MANAGE_SHOP' || view === 'MERCHANT_DEALS' || view === 'MERCHANT_STORES' || view === 'MERCHANT_PLUS' || view === 'SHOPPER_DEALS' || view === 'SHOPPER_STORES' || view === 'SHOPPER_PLUS' || view === 'SHOPPER_FAVORITES' || view === 'SHOPPER_CHATS' || view === 'SHOPPER_CONTRIBUTIONS' || view === 'SHOPPER_HISTORY' || view === 'PRICE_COMPARE' || view === 'NOTIFICATIONS' || view === 'SHOPPER_PRICE_TRACKER') && (
+        <Navigation currentView={view} setView={setView} role={role} t={t} />
+      )}
+
+      {isMenuOpen && (
+        <SideMenu 
+          role={role}
+          onClose={() => setIsMenuOpen(false)}
+          onNavigate={(v) => { setView(v); setIsMenuOpen(false); }}
+          isDarkMode={isDarkMode}
+          onToggleTheme={() => setIsDarkMode(!isDarkMode)}
+          onLogout={() => { setView('ONBOARDING'); setIsMenuOpen(false); }}
+          t={t}
+        />
       )}
     </div>
   );
