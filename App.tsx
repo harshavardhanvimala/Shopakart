@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { AppView, Shop, Product, Role, VisitListItem, Deal, NotificationItem, ChatMessage } from './types';
 import { MOCK_SHOPS, CATEGORIES } from './constants';
 import Navigation from './components/Navigation';
@@ -58,6 +58,9 @@ const App: React.FC = () => {
   const [isMapView, setIsMapView] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState('All');
+
+  // Ref for geolocation watcher
+  const watchId = useRef<number | null>(null);
 
   const t = (key: string) => TRANSLATIONS[locale]?.[key] || TRANSLATIONS['en'][key] || key;
 
@@ -134,6 +137,40 @@ const App: React.FC = () => {
   useEffect(() => { if (dbConnected) db.saveData('chats', chats); }, [chats, dbConnected]);
 
   const myShop = useMemo(() => shops.find(s => s.sellerId === 'seller-1') || shops[0] || MOCK_SHOPS[0], [shops]);
+  
+  // Real-time Location Tracking Logic for Merchants
+  useEffect(() => {
+    if (role === 'SELLER' && myShop.isLiveTrackingEnabled) {
+      if ('geolocation' in navigator) {
+        watchId.current = navigator.geolocation.watchPosition(
+          (position) => {
+            const { latitude, longitude } = position.coords;
+            // Update shop location in real-time
+            setShops(prev => prev.map(s => s.id === myShop.id ? {
+              ...s,
+              coordinates: { lat: latitude, lng: longitude }
+            } : s));
+          },
+          (error) => console.error("Location Tracking Error:", error),
+          { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
+        );
+      }
+    } else {
+      // Clear watcher if role changes or tracking disabled
+      if (watchId.current !== null) {
+        navigator.geolocation.clearWatch(watchId.current);
+        watchId.current = null;
+      }
+    }
+
+    // Cleanup on unmount
+    return () => {
+      if (watchId.current !== null) {
+        navigator.geolocation.clearWatch(watchId.current);
+      }
+    };
+  }, [role, myShop.isLiveTrackingEnabled, myShop.id]);
+
   const activeShop = useMemo(() => shops.find(s => s.id === selectedShopId), [shops, selectedShopId]);
 
   const filteredShops = useMemo(() => {
@@ -177,6 +214,11 @@ const App: React.FC = () => {
     } else {
       setView('HOME');
     }
+  };
+
+  // Helper to update specific shop properties
+  const updateShopProperty = <K extends keyof Shop>(shopId: string, key: K, value: Shop[K]) => {
+    setShops(prev => prev.map(s => s.id === shopId ? { ...s, [key]: value } : s));
   };
 
   if (isInitializing) {
@@ -375,6 +417,11 @@ const App: React.FC = () => {
                   <div key={shop.id} onClick={() => handleOpenShop(shop)} className="w-48 shrink-0 bg-white dark:bg-white/5 rounded-2xl overflow-hidden border border-slate-200 dark:border-white/10 shadow-sm active:scale-95 transition-all cursor-pointer">
                     <div className="h-28 relative">
                       <img src={shop.imageUrl} className="w-full h-full object-cover" />
+                      {shop.isLiveTrackingEnabled && (
+                        <div className="absolute top-2 left-2 px-1.5 py-0.5 bg-rose-600 text-white rounded font-black text-[8px] uppercase tracking-widest flex items-center gap-1 shadow-lg animate-pulse">
+                          <div className="w-1 h-1 bg-white rounded-full" /> Live
+                        </div>
+                      )}
                       <div className="absolute top-2 right-2 bg-emerald-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded flex items-center gap-1">
                         {shop.rating} <Star size={8} fill="white" />
                       </div>
@@ -423,6 +470,8 @@ const App: React.FC = () => {
             onToggleRole={() => { setRole(r => r === 'BUYER' ? 'SELLER' : 'BUYER'); setView(role === 'BUYER' ? 'SELLER_HUB' : 'HOME'); }} 
             onNavigate={(v) => setView(v)}
             onResetDB={handleResetDB}
+            onToggleLiveTracking={(enabled) => updateShopProperty(myShop.id, 'isLiveTrackingEnabled', enabled)}
+            liveTrackingEnabled={myShop.isLiveTrackingEnabled || false}
             t={t} 
           />
         )}
@@ -435,6 +484,7 @@ const App: React.FC = () => {
             onViewDeals={() => setView('MERCHANT_DEALS')}
             onViewStores={() => setView('MERCHANT_STORES')}
             onViewPlus={() => setView('MERCHANT_PLUS')}
+            onUpdateLocation={(lat, lng) => setShops(prev => prev.map(s => s.id === myShop.id ? { ...s, coordinates: { lat, lng } } : s))}
             t={t} 
           />
         )}

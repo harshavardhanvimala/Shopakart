@@ -57,6 +57,7 @@ export interface Shop {
   phone: string;
   imageUrl: string;
   isOpen: boolean;
+  isLiveTrackingEnabled?: boolean; // New: Flag for live tracking
   rating: number;
   reviews: number;
   viewsToday: number;
